@@ -16,6 +16,6 @@ setup(
   install_requires = [
       'click', 
       'requests',
-      'yaml',
+      'pyyaml',
   ]
 )
