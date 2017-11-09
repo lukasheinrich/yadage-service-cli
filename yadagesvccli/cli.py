@@ -17,13 +17,11 @@ def default_config():
         'server' : 'https://yadage.cern.ch'
     }
 
+DEFAULT_CONFIGFILE = os.path.expanduser('~/.ydgsvc.json')
 
 
-
-
-def load_config(configfile = None):
+def load_config(configfile):
     config = default_config()
-    configfile = configfile or os.path.expanduser('~/.ydgsvc.json')
     if os.path.exists(configfile):
         config.update(**json.load(open(configfile)))
     return config
@@ -61,7 +59,7 @@ def yad():
 @click.argument('workflow')
 @click.option('-t','--toplevel', help = 'toplevel', default = None)
 @click.option('--local/--remote', default = False)
-@click.option('-c','--config', help = 'config file', default = None)
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 @click.option('-p','--parameter', help = 'output', multiple = True)
 @click.option('-f','--parameter_file', help = 'output')
 @click.option('-i','--input', help = 'input')
@@ -122,7 +120,7 @@ def submit(workflow,toplevel,local,input,config, output,parameter, parameter_fil
 
 @yad.command()
 @click.argument('workflow_id')
-@click.option('-c','--config', help = 'config file', default = None)
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 def status(config, workflow_id):
     cfg = load_config(config)
     status_url = '{}/jobstatus/{}'.format(cfg['server'],workflow_id)
@@ -148,7 +146,7 @@ def download_file(url,local_filename, request_opts):
 @yad.command()
 @click.argument('workflow_id')
 @click.argument('resultfile')
-@click.option('-c','--config', help = 'config file', default = None)
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 @click.option('-o','--output')
 def get(config,workflow_id,resultfile, output):
     cfg = load_config(config)
@@ -160,7 +158,7 @@ def get(config,workflow_id,resultfile, output):
 
 @yad.command()
 @click.argument('filepath')
-@click.option('-c','--config', help = 'config file', default = None)
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 def upload(filepath, config):
     cfg = load_config(config)
     response = upload_file(filepath,cfg)
@@ -189,3 +187,25 @@ def upload_file(filepath,cfg):
 
     response = r.json()
     return response
+
+
+@yad.command()
+@click.option('-s','--server', help = 'server', default = None)
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
+def login(server,config):
+    cfg = load_config(config)
+    if server:
+        cfg['server'] = server
+    click.secho('''
+yadage service
+--------------
+Hi, if you already have a API key for {server}
+please enter it below.
+
+If not, please visit {server}/profile (make sure
+you are logged in or click 'Login' on the upper right
+hand side) and click 'Generate API Key'
+'''.format(server = cfg['server']))
+    value = click.prompt('Please enter your API key')
+    cfg['auth_token'] = value
+    json.dump(cfg,open(config,'w'))
