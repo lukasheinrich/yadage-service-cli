@@ -14,8 +14,10 @@ setup(
     ]
   },
   install_requires = [
-      'click', 
+      'click',
       'requests',
       'pyyaml',
+      'requests_toolbelt',
+      'clint'
   ]
 )

@@ -48,8 +48,9 @@ def yad():
 @click.option('-c','--config', help = 'config file', default = None)
 @click.option('-p','--parameter', help = 'output', multiple = True)
 @click.option('-f','--parameter_file', help = 'output')
+@click.option('-i','--input_url', help = 'input_url')
 @click.option('-o','--output', help = 'output', multiple = True)
-def submit(workflow,toplevel,config, output,parameter, parameter_file):
+def submit(workflow,toplevel,input_url,config, output,parameter, parameter_file):
     cfg = load_config(config)
 
     if parameter_file:
@@ -63,7 +64,7 @@ def submit(workflow,toplevel,config, output,parameter, parameter_file):
         raise RuntimeError('need some outputs')
     outputs = ','.join(output)
 
-    inputURL = ''
+    inputURL = input_url or ''
 
     submit_url = '{}/workflow_submit'.format(cfg['server'])
     submission_data = {
@@ -114,6 +115,7 @@ def download_file(url,local_filename, request_opts):
 def get(config,workflow_id,resultfile, output):
     cfg = load_config(config)
     result_url = '{}/results/{}/{}'.format(cfg['server'],workflow_id,resultfile)
+    print (result_url)
     download_file(result_url, output, request_opts = dict(
         verify = False,
         headers = headers(cfg)
