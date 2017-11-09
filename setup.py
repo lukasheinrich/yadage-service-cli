@@ -19,5 +19,10 @@ setup(
       'pyyaml',
       'requests_toolbelt',
       'clint'
-  ]
+  ],
+  extras_require = {
+    'local' : [
+       'yadage-schemas'
+    ]
+  }
 )

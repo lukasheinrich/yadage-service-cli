@@ -3,6 +3,11 @@ import click
 import os
 import json
 import yaml
+import requests
+import shutil
+import tempfile
+from requests_toolbelt.multipart import encoder
+from clint.textui.progress import Bar as ProgressBar
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -11,6 +16,10 @@ def default_config():
     return {
         'server' : 'https://yadage.cern.ch'
     }
+
+
+
+
 
 def load_config(configfile = None):
     config = default_config()
@@ -38,19 +47,26 @@ def headers(config):
         'Content-Type': 'application/json'
     }
 
+def zipdir(path, ziph):
+    # ziph is zipfile handle
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(os.path.join(root, file))
+
 @click.group()
 def yad():
     pass
 
 @yad.command()
 @click.argument('workflow')
-@click.argument('toplevel')
+@click.option('-t','--toplevel', help = 'toplevel', default = None)
+@click.option('--local/--remote', default = False)
 @click.option('-c','--config', help = 'config file', default = None)
 @click.option('-p','--parameter', help = 'output', multiple = True)
 @click.option('-f','--parameter_file', help = 'output')
-@click.option('-i','--input_url', help = 'input_url')
+@click.option('-i','--input', help = 'input')
 @click.option('-o','--output', help = 'output', multiple = True)
-def submit(workflow,toplevel,input_url,config, output,parameter, parameter_file):
+def submit(workflow,toplevel,local,input,config, output,parameter, parameter_file):
     cfg = load_config(config)
 
     if parameter_file:
@@ -64,15 +80,37 @@ def submit(workflow,toplevel,input_url,config, output,parameter, parameter_file)
         raise RuntimeError('need some outputs')
     outputs = ','.join(output)
 
-    inputURL = input_url or ''
-
+    inputURL = ''
+    if input and not input.startswith('http'):
+        if os.path.exists(input):
+            if os.path.isdir(input):
+                tmpfilename = tempfile.mktemp()
+                shutil.make_archive(tmpfilename, 'zip', input)
+                r = upload_file(tmpfilename+'.zip', cfg)
+                os.remove(tmpfilename+'.zip')
+            else:
+                r = upload_file(input, cfg)
+            inputURL = '{}/workflow_input/{}'.format(cfg['server'], r['file_id'])
+            click.secho('uploaded file to {}'.format(inputURL))
+        else:
+            raise RuntimeError('not sure how to handle input')
     submit_url = '{}/workflow_submit'.format(cfg['server'])
+
     submission_data = {
-      "outputs": outputs, "workflow": workflow, "toplevel": toplevel,
+      "outputs": outputs,
       "inputURL": inputURL,
       "preset_pars": parameters,
       "wflowname": wflowname
     }
+
+    if local:
+        import yadageschemas
+        submission_data['workflow']=yadageschemas.load(workflow, toplevel or os.getcwd(), 'yadage/workflow-schema')
+        submission_data['toplevel']=''
+    else:
+        submission_data['workflow']=workflow
+        submission_data['toplevel']=toplevel
+
     r = requests.post(submit_url,
         data = json.dumps(submission_data),
         headers = headers(cfg),
@@ -115,9 +153,39 @@ def download_file(url,local_filename, request_opts):
 def get(config,workflow_id,resultfile, output):
     cfg = load_config(config)
     result_url = '{}/results/{}/{}'.format(cfg['server'],workflow_id,resultfile)
-    print (result_url)
     download_file(result_url, output, request_opts = dict(
         verify = False,
         headers = headers(cfg)
     ))
-    download_file
+
+@yad.command()
+@click.argument('filepath')
+@click.option('-c','--config', help = 'config file', default = None)
+def upload(filepath, config):
+    cfg = load_config(config)
+    response = upload_file(filepath,cfg)
+    click.secho('\n')
+    click.secho('uploaded file id is: {}'.format(response['file_id']))
+
+
+def upload_file(filepath,cfg):
+    def create_callback(encoder):
+        encoder_len = encoder.len
+        bar = ProgressBar(expected_size=encoder_len, filled_char='=')
+
+        def callback(monitor):
+            bar.show(monitor.bytes_read)
+
+        return callback
+
+    e = encoder.MultipartEncoder(
+        fields={'upload_file': ('filename', open(filepath,'rb'), 'text/plain')}
+    )
+    m = encoder.MultipartEncoderMonitor(e, create_callback(e))
+
+    head = headers(cfg)
+    head['Content-Type'] = m.content_type
+    r = requests.post('{}/upload'.format(cfg['server']), data=m, verify = False,headers=head)
+
+    response = r.json()
+    return response
