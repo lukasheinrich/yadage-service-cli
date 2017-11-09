@@ -62,9 +62,10 @@ def yad():
 @click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 @click.option('-p','--parameter', help = 'output', multiple = True)
 @click.option('-f','--parameter_file', help = 'output')
+@click.option('--json-output/--human-readable', default = False, help = 'JSON output?')
 @click.option('-i','--input', help = 'input')
 @click.option('-o','--output', help = 'output', multiple = True)
-def submit(workflow,toplevel,local,input,config, output,parameter, parameter_file):
+def submit(workflow,toplevel,json_output,local,input,config, output,parameter, parameter_file):
     cfg = load_config(config)
 
     if parameter_file:
@@ -79,6 +80,7 @@ def submit(workflow,toplevel,local,input,config, output,parameter, parameter_fil
     outputs = ','.join(output)
 
     inputURL = ''
+    inputAuth = False
     if input and not input.startswith('http'):
         if os.path.exists(input):
             if os.path.isdir(input):
@@ -89,7 +91,9 @@ def submit(workflow,toplevel,local,input,config, output,parameter, parameter_fil
             else:
                 r = upload_file(input, cfg)
             inputURL = '{}/workflow_input/{}'.format(cfg['server'], r['file_id'])
-            click.secho('uploaded file to {}'.format(inputURL))
+            inputAuth = True
+            if not json_output:
+                click.secho('uploaded file to {}'.format(inputURL))
         else:
             raise RuntimeError('not sure how to handle input')
     submit_url = '{}/workflow_submit'.format(cfg['server'])
@@ -97,6 +101,7 @@ def submit(workflow,toplevel,local,input,config, output,parameter, parameter_fil
     submission_data = {
       "outputs": outputs,
       "inputURL": inputURL,
+      "inputAuth": inputAuth,
       "preset_pars": parameters,
       "wflowname": wflowname
     }
@@ -116,7 +121,12 @@ def submit(workflow,toplevel,local,input,config, output,parameter, parameter_fil
     )
     if not r.ok:
         raise RuntimeError('submission failed %s', r.content)
-    click.echo(json.dumps(r.json()))
+
+    response = r.json()
+    if not json_output:
+        click.secho('submitted workflow. Monitor it at  {}/monitor/{}'.format(cfg['server'],response['jobguid']))
+    else:
+        click.echo(json.dumps(response))
 
 @yad.command()
 @click.argument('workflow_id')
