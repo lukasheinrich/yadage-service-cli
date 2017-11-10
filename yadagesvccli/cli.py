@@ -216,6 +216,6 @@ If not, please visit {server}/profile (make sure
 you are logged in or click 'Login' on the upper right
 hand side) and click 'Generate API Key'
 '''.format(server = cfg['server']))
-    value = click.prompt('Please enter your API key')
+    value = click.prompt('Please enter your API key', hide_input = True)
     cfg['auth_token'] = value
     json.dump(cfg,open(config,'w'))
