@@ -219,3 +219,18 @@ hand side) and click 'Generate API Key'
     value = click.prompt('Please enter your API key', hide_input = True)
     cfg['auth_token'] = value
     json.dump(cfg,open(config,'w'))
+
+
+@yad.command()
+@click.argument('jobid')
+@click.option('--json-lines/--no-json', default = False)
+@click.option('-s','--server', help = 'server', default = None)
+@click.option('-t','--topic', help = 'topic', default = 'run')
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
+def job_logs(jobid,server,config,json_lines,topic):
+    cfg = load_config(config)
+    for i in requests.get("{}/subjob_logs/{}?topic={}".format(cfg['server'],jobid,topic), verify=False, stream=True).iter_lines():
+        if not json_lines:
+            click.secho(json.loads(i)['msg'])
+        else:
+            click.secho(i)
