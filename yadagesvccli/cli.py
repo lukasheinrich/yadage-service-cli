@@ -229,8 +229,34 @@ hand side) and click 'Generate API Key'
 @click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
 def job_logs(jobid,server,config,json_lines,topic):
     cfg = load_config(config)
-    for i in requests.get("{}/subjob_logs/{}?topic={}".format(cfg['server'],jobid,topic), verify=False, stream=True).iter_lines():
+    for i in requests.get("{}/subjob_logs/{}?topic={}".format(cfg['server'],jobid,topic), headers = headers(cfg), verify=False, stream=True).iter_lines():
         if not json_lines:
             click.secho(json.loads(i)['msg'])
         else:
             click.secho(i)
+
+@yad.command()
+@click.argument('wflowid')
+@click.option('--json-lines/--no-json', default = False)
+@click.option('-s','--server', help = 'server', default = None)
+@click.option('-t','--topic', help = 'topic', default = 'log')
+@click.option('-c','--config', help = 'config file', default = DEFAULT_CONFIGFILE)
+def wflow_logs(wflowid,server,config,json_lines,topic):
+    cfg = load_config(config)
+    if topic == 'state': key = 'state'
+
+    r = requests.get("{}/wflow_logs/{}?topic={}".format(cfg['server'],wflowid,topic), headers = headers(cfg), verify=False, stream=True)
+
+    if topic == 'state':
+        for i in r.iter_lines():
+            pass
+        state = json.loads(i)['state']
+        for node in state['dag']['nodes']:
+            click.secho('node: {} id: {} state: {}'.format(node['name'], node['proxy']['proxydetails'].get('task_id','n/a'), node['state']))
+
+    if topic == 'log':
+        for i in r.iter_lines():
+            if not json_lines:
+                click.secho(json.dumps(json.loads(i)['msg']))
+            else:
+                click.secho(i)
