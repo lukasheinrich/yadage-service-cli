@@ -5,6 +5,7 @@ from clint.textui.progress import Bar as ProgressBar
 import json
 import tempfile
 import shutil
+import sys
 import click
 
 def default_config():
@@ -129,17 +130,13 @@ class Client(object):
     def get(self,workflow_id,resultfile, output, stdout):
         result_url = '{}/results/{}/{}'.format(self.config['server'],workflow_id,resultfile)
 
-        import sys
-        if stdout:
-            output_stream = sys.stdout
-        else:
-            output_stream = open(output or result_url.split('/')[-1], 'wb')
+        request_opts =  dict(verify = False, headers = headers(self.config))
 
-        download_file(result_url, output_stream, request_opts = dict(
-            verify = False,
-            headers = headers(self.config)
-        ))
-        output_stream.close()
+        if stdout:
+            download_file(result_url, sys.stdout, request_opts = request_opts)
+        else:
+            with open(output or result_url.split('/')[-1], 'wb') as f:
+                download_file(result_url, f, request_opts = request_opts)
 
     def job_logs(self,jobid,json_lines,topic):
         for i in requests.get("{}/subjob_logs/{}?topic={}".format(self.config['server'],jobid,topic),

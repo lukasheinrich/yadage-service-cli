@@ -4,9 +4,9 @@ import os
 import json
 import yaml
 import requests
+import urllib3
 from .client import Client
 
-import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def options_from_eqdelimstring(opts):
@@ -44,8 +44,6 @@ def submit(workflow,toplevel,json_output,local,input,config, output,parameter, p
         click.secho('submitted workflow. Monitor it at  {}/monitor/{}'.format(c.config['server'],response['jobguid']))
     else:
         click.echo(json.dumps(response))
-
-
 
 @yad.command()
 @click.argument('workflow_id')
