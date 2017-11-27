@@ -127,13 +127,13 @@ class Client(object):
             raise RuntimeError('submission failed %s', r.content)
         return r.json()
 
-    def get(self,workflow_id,resultfile, output, stdout):
+    def get(self,workflow_id,resultfile, output, stream = None):
         result_url = '{}/results/{}/{}'.format(self.config['server'],workflow_id,resultfile)
 
         request_opts =  dict(verify = False, headers = headers(self.config))
 
-        if stdout:
-            download_file(result_url, sys.stdout, request_opts = request_opts)
+        if stream:
+            download_file(result_url, stream, request_opts = request_opts)
         else:
             with open(output or result_url.split('/')[-1], 'wb') as f:
                 download_file(result_url, f, request_opts = request_opts)

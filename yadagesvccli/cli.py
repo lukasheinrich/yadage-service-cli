@@ -1,6 +1,7 @@
 import requests
 import click
 import os
+import sys
 import json
 import yaml
 import requests
@@ -61,7 +62,7 @@ def status(config, workflow_id):
 @click.option('--stdout/--no-stdout')
 def get(config,workflow_id,resultfile, output, stdout):
     c = Client(config)
-    c.get(workflow_id,resultfile, output, stdout)
+    c.get(workflow_id,resultfile, output, sys.stdout if stdout else None)
 
 @yad.command()
 @click.argument('filepath')
