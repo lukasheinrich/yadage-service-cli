@@ -70,7 +70,7 @@ class Client(object):
         self.configfile = config or DEFAULT_CONFIGFILE
         self.config = load_config(self.configfile)
 
-    def submit(self,workflow,toplevel,parameters,input,outputs,local):
+    def submit(self,workflow,toplevel,parameters,input,outputs,local,labels):
         wflowname = 'submit'
         if not outputs:
             raise RuntimeError('need some outputs')
@@ -91,14 +91,18 @@ class Client(object):
                 inputAuth = True
             else:
                 raise RuntimeError('not sure how to handle input')
+        elif input.startswith('http'):
+            inputURL = input
         submit_url = '{}/workflow_submit'.format(self.config['server'])
 
         submission_data = {
           "outputs": outputs,
-          "inputURL": inputURL,
+          "archive": inputURL,
           "inputAuth": inputAuth,
           "preset_pars": parameters,
-          "wflowname": wflowname
+          "wflowname": wflowname,
+          "meta_details": labels,
+          "interactive": False
         }
 
         if local:
@@ -127,13 +131,16 @@ class Client(object):
             raise RuntimeError('submission failed %s', r.content)
         return r.json()
 
-    def get(self,workflow_id,resultfile, output, stream = None):
+    def get(self,workflow_id,resultfile, output = None, as_string = None):
         result_url = '{}/results/{}/{}'.format(self.config['server'],workflow_id,resultfile)
 
         request_opts =  dict(verify = False, headers = headers(self.config))
 
-        if stream:
-            download_file(result_url, stream, request_opts = request_opts)
+        if as_string:
+            import StringIO
+            s = StringIO.StringIO()
+            download_file(result_url, s, request_opts = request_opts)
+            return s.getvalue()
         else:
             with open(output or result_url.split('/')[-1], 'wb') as f:
                 download_file(result_url, f, request_opts = request_opts)
