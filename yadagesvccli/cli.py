@@ -27,19 +27,21 @@ def yad():
 @click.option('--local/--remote', default = False)
 @click.option('-c','--config', help = 'config file', default = None)
 @click.option('-p','--parameter', help = 'output', multiple = True)
+@click.option('-l','--label', help = 'a custom label you want to attach to the job', multiple = True)
 @click.option('-f','--parameter_file', help = 'output')
 @click.option('--json-output/--human-readable', default = False, help = 'JSON output?')
 @click.option('-i','--input', help = 'input')
 @click.option('-o','--output', help = 'output', multiple = True)
-def submit(workflow,toplevel,json_output,local,input,config, output,parameter, parameter_file):
+def submit(workflow,toplevel,json_output,local,input,config, output,parameter, parameter_file, label):
     if parameter_file:
         parameters = yaml.load(open(parameter_file))
     else:
         parameters = {}
     parameters.update(**options_from_eqdelimstring(parameter))
+    labels = options_from_eqdelimstring(label)
 
     c = Client(config)
-    response = c.submit(workflow,toplevel,parameters,input,output,local)
+    response = c.submit(workflow,toplevel,parameters,input,output,local,labels)
 
     if not json_output:
         click.secho('submitted workflow. Monitor it at  {}/monitor/{}'.format(c.config['server'],response['jobguid']))
